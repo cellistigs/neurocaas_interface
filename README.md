@@ -2,7 +2,7 @@
 
 ## Info for Joao: 
 ### General Testing Stack Structure
-The interface can be tested at the bucket ***cianalysispermastack***. I have added your website enabled credentials to the group ***traviscipermagroup***, allowing you to upload datasets in the corresponding bucket.  
+The interface can be tested at the bucket ***cianalysispermastack***. I have added your website enabled credentials (jcouto) to the group ***traviscipermagroup***, allowing you to upload datasets in the corresponding bucket.  
 
 The bucket has the following structure: 
 
