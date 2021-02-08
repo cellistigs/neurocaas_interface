@@ -1,6 +1,22 @@
 from .utils import *
-from .awstools import read_aws_keys, set_aws_keys
-from  PyQt5.QtWidgets import QDockWidget
+from .awstools import *
+from  PyQt5.QtWidgets import (QDockWidget,
+                              QWidget,
+                              QGridLayout,
+                              QTabWidget,
+                              QFormLayout,
+                              QLabel,
+                              QPlainTextEdit,
+                              QLineEdit,
+                              QComboBox,
+                              QDialogButtonBox,
+                              QVBoxLayout)
+from PyQt5 import QtCore
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView
+except:
+    print('Could not load QWebEngineView - The credential manager will not work.')
+
 
 class CredentialsManager(QDockWidget):
     def __init__(self,
@@ -12,7 +28,7 @@ from the GUI.
         '''
         super(CredentialsManager,self).__init__()
         self.awsinfo = read_aws_keys()
-        self.ncaasconfig = read_config(configfile)
+        self.ncaasconfig = read_config()
         ncaasconfig_json = json.dumps(self.ncaasconfig,
                                       indent=4,
                                       sort_keys=True)
@@ -45,12 +61,12 @@ from the GUI.
         self.cred_secret.textChanged.connect(cred_secret)
 
         self.aws_region = QComboBox()
-        for r in awsregions:
+        for r in AWSREGIONS:
             self.aws_region.addItem(r)
-        self.aws_region.setCurrentIndex(awsregions.index(self.awsinfo['region']))
+        self.aws_region.setCurrentIndex(AWSREGIONS.index(self.awsinfo['region']))
         lay.addRow(QLabel('AWS region'),self.aws_region)
         def region_call(value):
-            self.awsinfo['region'] = awsregions[value]    
+            self.awsinfo['region'] = AWSREGIONS[value]    
         self.aws_region.currentIndexChanged.connect(region_call)
         
         self.configedit = QPlainTextEdit(ncaasconfig_json)
@@ -82,7 +98,7 @@ from the GUI.
                     self.cred_secret.setText(values[3])
                     print('Got credentials from the website, you can close this window.')
                     dlg = QDialog()
-                    dlg.setWindowTitle('Good job!')
+                    dlg.setWindowTitle('Great!')
                     but = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
                     def ok():
                         self.close()
@@ -99,26 +115,19 @@ from the GUI.
                     
             page.toHtml(call)
         web.loadFinished.connect(parsehtml)
-        #self.getsite = QPushButton('Get credentials from website')
         def setHtml(self,html):
             self.html = html
-        #def getsite():
-            
-        #lay.addRow(self.getsite)
-        #self.getsite.setStyleSheet("font: bold")
-        #self.getsite.clicked.connect(getsite)
         self.show()
     def closeEvent(self,event):
         set_aws_keys(**self.awsinfo)
-        print('Saved AWS keys.')
         try:
             from io import StringIO
             pars = json.load(StringIO(self.configedit.toPlainText()))
+            with open(self.configfile,'w') as fd:
+                json.dump(pars,fd,indent=4,sort_keys = True)
         except Exception as E:
             print('Error in the configuration file, did not save')
             return
-        with open(self.configfile,'w') as fd:
-            json.dump(pars,fd,indent=4,sort_keys = True)
         event.accept()
 
 

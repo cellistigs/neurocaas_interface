@@ -85,7 +85,7 @@ multipart_config = TransferConfig(multipart_threshold=1024*25,
 def s3_connect():
     return boto3.resource('s3')
 
-def s3_ls(bucketnames, s3 = None,refreshfunc = None):
+def s3_ls(buckets, s3 = None, refreshfunc = None, **kwargs):
     '''
     List s3 files while refreshing the gui:
     s3_ls(s3_connect(), ['bucket1','bucket2'], refreshfunc = QApplication.processEvents)
@@ -93,12 +93,12 @@ def s3_ls(bucketnames, s3 = None,refreshfunc = None):
     if s3 is None:
         s3 = s3_connect()
     files = []
-    for bucketname in bucketnames:
+    for bucketname in buckets:
         bucket = s3.Bucket(bucketname)
         for l in list(bucket.objects.all()):
             if not refreshfunc is None:
                 refreshfunc()
-            files.append(bucketname+'/'+l.key)
+            files.append(bucketname + '/' + l.key)
     return files
 
 

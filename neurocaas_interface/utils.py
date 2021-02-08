@@ -7,6 +7,10 @@ NCAASDIR = pjoin(os.path.expanduser('~'),'.neurocaas')
 NEUROCAAS_LOGIN_URL = "http://www.neurocaas.org/profile/"
 NEUROCAAS_CONFIG_PATH = pjoin(NCAASDIR,'neurocaas_config.json')
 
+DEFAULTCONFIG = dict(buckets = ['cianalysispermastack'],
+                     groups = ['traviscipermagroup'])
+
+
 def to_log(msg,logfile = None):
     '''
     Log actions and events to the neurocaas folder.
@@ -32,9 +36,10 @@ def tail(filename, nlines=100):
         lines = lines[-100:]
     return lines
 
-defaultconfig = dict(buckets = ['cianalysispermastack'])
-
 def read_config():
+    '''
+    Read a configuration file and fill it with defaults.
+    '''
     if not os.path.exists(os.path.dirname(NEUROCAAS_CONFIG_PATH)):
         os.makedirs(os.path.dirname(NEUROCAAS_CONFIG_PATH))
     if not os.path.exists(NEUROCAAS_CONFIG_PATH):
@@ -45,12 +50,11 @@ def read_config():
                       sort_keys = True)
     with open(NEUROCAAS_CONFIG_PATH,'r') as f:
         config = json.load(f)
-        for k in config.keys():
-            if k in defaultconfig.keys(): # Use default (2 levels down)
-                if type(defaultconfig[k]) is dict: 
-                    for j in defaultconfig[k].keys():
-                        if not j in config[k].keys():
-                            config[k][j] = defaultconfig[k][j]
-            else:
-                config[k] = defaultconfig[k]
+        for k in DEFAULTCONFIG.keys(): # Use default (2 levels down)
+            if not k in config.keys():
+                config[k] = DEFAULTCONFIG[k]
+            if type(DEFAULTCONFIG[k]) is dict: 
+                for j in DEFAULTCONFIG[k].keys():
+                    if not j in config[k].keys():
+                        config[k][j] = DEFAULTCONFIG[k][j]
     return config
