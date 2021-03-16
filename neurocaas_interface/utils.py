@@ -1,8 +1,15 @@
 import os
 from os.path import join as pjoin
 import json
+from datetime import datetime
+from functools import partial
+print = partial(print,flush=True)
 
 NCAASDIR = pjoin(os.path.expanduser('~'),'.neurocaas')
+NCAASTMP = pjoin(NCAASDIR,'temp')
+if not os.path.isdir(NCAASTMP):
+    os.makedirs(NCAASTMP)
+    
 CREDENTIALS_FILE = pjoin(NCAASDIR,'aws_credentials')
 
 NEUROCAAS_LOGIN_URL = "http://www.neurocaas.org/profile/"
