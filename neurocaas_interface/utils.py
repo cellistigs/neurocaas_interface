@@ -3,6 +3,7 @@ from os.path import join as pjoin
 import json
 
 NCAASDIR = pjoin(os.path.expanduser('~'),'.neurocaas')
+CREDENTIALS_FILE = pjoin(NCAASDIR,'aws_credentials')
 
 NEUROCAAS_LOGIN_URL = "http://www.neurocaas.org/profile/"
 NEUROCAAS_CONFIG_PATH = pjoin(NCAASDIR,'neurocaas_config.json')
@@ -45,7 +46,7 @@ def read_config():
     if not os.path.exists(NEUROCAAS_CONFIG_PATH):
         with open(NEUROCAAS_CONFIG_PATH,'w') as f:
             print('Creating config from defaults [{0}]'.format(NEUROCAAS_CONFIG_PATH))
-            json.dump(defaultconfig, f,
+            json.dump(DEFAULTCONFIG, f,
                       indent = 4,
                       sort_keys = True)
     with open(NEUROCAAS_CONFIG_PATH,'r') as f:

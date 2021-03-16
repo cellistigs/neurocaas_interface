@@ -26,9 +26,8 @@ AWSREGIONS = ['us-east-2',
               'me-south-1',
               'sa-east-1']
 
-
 def set_aws_keys(access_key,secret_key,region='us-east-1'):
-    fname = pjoin(os.path.expanduser('~'),'.aws','credentials')
+    fname = CREDENTIALS_FILE
     cred = '''[default]
 aws_access_key_id = {access_key}
 aws_secret_access_key = {secret_key}
@@ -46,10 +45,9 @@ region={region}'''
             fd.write(conf.format(region=region))
 
 
-def read_aws_keys():
+def read_aws_keys(awscredfile = CREDENTIALS_FILE):
     awsfolder = pjoin(os.path.expanduser('~'),'.aws')
-    awscredfile = pjoin(awsfolder,'credentials')
-    awsconfig = pjoin(awsfolder,'credentials')
+    awsconfig = pjoin(awsfolder,'config')
     access_key = ''
     secret_key = ''
     region = 'us-east-1'
@@ -81,9 +79,11 @@ multipart_config = TransferConfig(multipart_threshold=1024*25,
                                   multipart_chunksize=1024*25,
                                   use_threads=True)
 
-            
 def s3_connect():
-    return boto3.resource('s3')
+    aws = read_aws_keys()
+    session = boto3.session.Session(aws_access_key_id = aws['access_key'],
+                                    aws_secret_access_key = aws['secret_key'])
+    return session.resource('s3')
 
 def s3_ls(buckets, s3 = None, refreshfunc = None, **kwargs):
     '''
@@ -106,8 +106,6 @@ class UploadNonBlocking(threading.Thread):
     def __init__(self, filepath, destination, bucketname, s3 = None):
         super(Upload,self).__init__()
         self.s3 = s3
-        if self.s3 is None:
-            self.s3 = s3_connect()
         statinfo = os.stat(filepath)
         self.fsize = statinfo.st_size
         self.count = 0
@@ -117,6 +115,9 @@ class UploadNonBlocking(threading.Thread):
         self.destination = destination
         
     def run(self):
+        if self.s3 is None:
+            self.s3 = s3_connect()
+
         self.isrunning = True
         to_log('Upload: ' + self.filepath)
         def update(chunk):
