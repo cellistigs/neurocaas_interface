@@ -45,7 +45,7 @@ def read_config():
     if not os.path.exists(NEUROCAAS_CONFIG_PATH):
         with open(NEUROCAAS_CONFIG_PATH,'w') as f:
             print('Creating config from defaults [{0}]'.format(NEUROCAAS_CONFIG_PATH))
-            json.dump(defaultconfig, f,
+            json.dump(DEFAULTCONFIG, f,
                       indent = 4,
                       sort_keys = True)
     with open(NEUROCAAS_CONFIG_PATH,'r') as f:
