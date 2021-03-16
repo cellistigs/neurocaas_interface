@@ -10,14 +10,15 @@ from  PyQt5.QtWidgets import (QDockWidget,
                               QLineEdit,
                               QComboBox,
                               QDialogButtonBox,
+                              QDialog,
                               QVBoxLayout)
 from PyQt5 import QtCore
 try:
     from PyQt5.QtWebEngineWidgets import QWebEngineView
-except:
-    print('Could not load QWebEngineView - The credential manager will not work.')
-
-
+except Exception as e:
+    print('Could not load QWebEngineView - The credential manager will not work.')    
+    print(e)
+    
 class CredentialsManager(QDockWidget):
     def __init__(self,
                  configfile = NEUROCAAS_CONFIG_PATH):
