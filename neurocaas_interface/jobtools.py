@@ -8,7 +8,8 @@ class NeuroCAASJob(threading.Thread):
                  uploadpath = None,
                  state = None,
                  config = None,
-                 s3 = None):
+                 s3 = None,
+                 post_func = None):
         '''
         RemoteJob
 
@@ -84,7 +85,9 @@ class NeuroCAASJob(threading.Thread):
                 to_log('Submitted job {0}'.format(self.submit['timestamp']))
                 self.state = 'submitted'
             elif self.state == 'submitted':
-                print(self.state)
+                #while not (end.txt):
+                #    self._parse_log()
+                #print(self.state)
                 # check if the folder for this job exists in results
                 self.state = 'started'
             elif self.state == 'started':
@@ -95,7 +98,21 @@ class NeuroCAASJob(threading.Thread):
                 # download the files and close
                 self.isrunning = False
                 print(self.state)
+                self.state = 'download'
+            elif self.state == 'download':
+                # download the files and close
+                self.isrunning = False
+                self.download_dir = 'outfolder'
+                self.state = 'downloaded'
+                print(self.state)
+            elif self.state == 'downloaded' and not self.post_func is None:
+                self.post_func(self.download_dir)
         self.isrunning = False
         print('Stopped.')
+        
     def stop(self):
         self.isrunning = False
+
+    def stop_job(self):
+        # delete 
+        pass
