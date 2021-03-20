@@ -1,5 +1,6 @@
 from .utils import *
 from .awstools import *
+from .log import NeuroCAASCertificate,NeuroCAASDataStatus
 import time
 import tempfile
 
@@ -84,6 +85,8 @@ class NeuroCAASJob(threading.Thread):
 
                 to_log('Submitted job {0}'.format(self.submit['timestamp']))
                 self.state = 'submitted'
+                ## parse into the results folder name here:
+                self.resultspath = os.path.join("s3://",self.bucket,self.group,"results","job__{b}_{ts}".format(b= self.bucket,ts = self.submit["timestamp"]))
             elif self.state == 'submitted':
                 #while not (end.txt):
                 #    self._parse_log()
@@ -109,7 +112,14 @@ class NeuroCAASJob(threading.Thread):
                 self.post_func(self.download_dir)
         self.isrunning = False
         print('Stopped.')
-        
+    def _parse_cert(self):
+        """Parses the certificate file and assigns here along with a dictionary specifying instance info. This info is as follows: 
+        {instance_number:{dataset:dataset_name,id:instance_id},} with the instance_number index starting at 1. 
+
+        """
+        self.cert = NeuroCAASCertificate(os.path.join(self.resultspath,"logs","certificate.txt"))
+        self.instances = self.cert.get_instances()
+
     def stop(self):
         self.isrunning = False
 
