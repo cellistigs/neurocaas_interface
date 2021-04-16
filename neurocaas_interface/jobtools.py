@@ -45,6 +45,7 @@ class NeuroCAASJob(threading.Thread):
         self.state = state
         self.submitpath = None
         self.start()
+        self.instances = []
     def run(self):
         if self.s3 is None: # this should be inside the thread.
             self.s3 = s3_connect()
@@ -86,7 +87,9 @@ class NeuroCAASJob(threading.Thread):
                 to_log('Submitted job {0}'.format(self.submit['timestamp']))
                 self.state = 'submitted'
                 ## parse into the results folder name here:
-                self.resultspath = os.path.join("s3://",self.bucket,self.group,"results","job__{b}_{ts}".format(b= self.bucket,ts = self.submit["timestamp"]))
+                self.resultspath = os.path.join("s3://",self.bucket,self.group,"results","job__{b}_{ts}".format(
+                    b = self.bucket,
+                    ts = self.submit["timestamp"]))
             elif self.state == 'submitted':
                 #while not (end.txt):
                 #    self._parse_log()
