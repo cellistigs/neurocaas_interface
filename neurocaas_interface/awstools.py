@@ -83,7 +83,8 @@ def s3_connect():
     aws = read_aws_keys()
     session = boto3.session.Session(aws_access_key_id = aws['access_key'],
                                     aws_secret_access_key = aws['secret_key'])
-    return session.resource('s3')
+    return session, session.resource('s3'), session.client('s3')
+
 
 def s3_ls(buckets, s3 = None, refreshfunc = None, **kwargs):
     '''
@@ -91,7 +92,7 @@ def s3_ls(buckets, s3 = None, refreshfunc = None, **kwargs):
     s3_ls(s3_connect(), ['bucket1','bucket2'], refreshfunc = QApplication.processEvents)
     '''
     if s3 is None:
-        s3 = s3_connect()
+        session, s3, s3_client = s3_connect()
     files = []
     for bucketname in buckets:
         bucket = s3.Bucket(bucketname)
@@ -116,7 +117,7 @@ class UploadNonBlocking(threading.Thread):
         
     def run(self):
         if self.s3 is None:
-            self.s3 = s3_connect()
+            _, self.s3, _ = s3_connect()
 
         self.isrunning = True
         to_log('Upload: ' + self.filepath)

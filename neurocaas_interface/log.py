@@ -1,21 +1,16 @@
 ## copied from neurocaas_contrib.log on 3/19/21
-import datetime
 from collections import OrderedDict
 import pdb
 import re
 import json
-import os
-import docker
-import sys
-import boto3
+#import docker
+from .awstools import *
 from urllib.parse import urlparse
 from botocore.exceptions import ClientError
 import traceback
 
 filepath = os.path.realpath(__file__)
-client = docker.from_env()
 
-s3_resource = boto3.resource("s3")
 divider = "================"
 instance_keyphrase_pre = "[Utils] New instance ec2.Instance(id='"
 instance_keyphrase_post = "') created!"
@@ -41,17 +36,20 @@ def find_linebreaks(tup):
     """
     return tup[1] == divider
 
-def load_file_s3(bucket_name, key):
+def load_file_s3(bucket_name, key, s3_resource = None):
     """ """
+    if s3_resource is None:
+        _,s3_resource,_ = s3_connect()
     try:
         file_object = s3_resource.Object(bucket_name, key)
-        raw_content = file_object.get()['Body'].read() 
+        raw_content = file_object.get()['Body'].read()
+        print(raw_content.decode("utf-8"))
     except ValueError as ve:
         print("Error loading config file. Error is: {}".format(ve))
         raise ValueError
     except ClientError as ce:
         e = ce.response["Error"]["Code"]
-        print("Encountered AWS Error: {}".format(e))
+        print("Encountered AWS Error for bucket{0}:key {1}: {2}".format(bucket_name,key, e))
         raise ValueError
     return raw_content.decode("utf-8")
 
@@ -75,6 +73,7 @@ class WriteObj(object):
             assert self.init_dict.get("bucket",False) and self.init_dict.get("key","False"),"Params bucket,key must be specified. "
         elif self.init_dict["loc"] is "local":
             assert self.init_dict.get("localpath",False),"Param localpath must be specified. "
+        _,self.s3_resource,_ = s3_connect()
 
     def put(self,stringbody): 
         """String to put at the object represented by this instance. 
@@ -82,7 +81,9 @@ class WriteObj(object):
         :param stringbody: a string representing the body of this object.
         """
         if self.init_dict["loc"] == "s3":
-            writeobj = s3_resource.Object(self.init_dict["bucket"],self.init_dict["key"])
+            if self.s3_resource is None:
+                _,self.s3_resource,_ = s3_connect()
+            writeobj = self.s3_resource.Object(self.init_dict["bucket"],self.init_dict["key"])
             writeobj.put(Body=stringbody.encode("utf-8"))
         elif self.init_dict["loc"] == "local":
             with open(self.init_dict["localpath"],"wb") as f:
@@ -94,7 +95,9 @@ class WriteObj(object):
         :param dictbody: a dictionary representing the body of this object.
         """
         if self.init_dict["loc"] == "s3":
-            writeobj = s3_resource.Object(self.init_dict["bucket"],self.init_dict["key"])
+            if self.s3_resource is None:
+                _,self.s3_resource,_ = s3_connect()
+            writeobj = self.s3_resource.Object(self.init_dict["bucket"],self.init_dict["key"])
             writeobj.put(Body=json.dumps(dictbody).encode("utf-8"))
         elif self.init_dict["loc"] == "local":
             with open(self.init_dict["localpath"],"w") as f:
@@ -214,9 +217,14 @@ class NeuroCAASCertificate(NeuroCAASLogObject):
         :return: tuple (certdict, writedict, writearea) of dictionaries and a range object. First entry has line numbers as keys and content of those lines as values.Second entry has line numbers as keys, and a dictionary of format {"dataname":dataname,"line":text} as value. Third entry indicates the range of lines where we can write. 
         """
         certlines = self.rawfile.split("\n")
+        print(self.rawfile)
         certdict = {ci:cl for ci,cl in enumerate(certlines)}
         linebreak_locs = dict(filter(find_linebreaks,certdict.items()))
-        assert len(linebreak_locs) == 2,"This divider should indicate only the start and end of the actively updated status." 
+        #print(certlines)
+        #print(certdict)
+        #import ipdb
+        #ipdb.set_trace()
+        assert len(linebreak_locs) == 2,"This divider should indicate only the start and end of the actively updated status."
         interval = sorted(linebreak_locs.keys())
         writearea = range(interval[0]+1,interval[1])
         writedict = {}
@@ -424,6 +432,7 @@ class NeuroCAASDataStatus(NeuroCAASLogObject):
         :return: A dictionary of custom status entries. 
         """
         custom_status = {}
+        client = docker.from_env()
         inspection = client.api.inspect_container(self.container.name)
         ## Possible statuses.
         docker_stats = {
