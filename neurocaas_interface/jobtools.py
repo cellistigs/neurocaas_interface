@@ -7,10 +7,11 @@ import tempfile
 class NeuroCAASJob(threading.Thread):
     def __init__(self, bucket, group, submit,
                  uploadpath = None,
-                 localpath = None
+                 localpath = None,
                  state = None,
                  config = None,
                  s3 = None,
+                 update_func = lambda x: x,
                  post_func = lambda x: print(x.submitpath)):
         '''
         RemoteJob
@@ -31,7 +32,8 @@ class NeuroCAASJob(threading.Thread):
         self.s3 = s3
         self.client = None
         self.session = None
-
+        self.post_func = post_func
+        self.update_func = update_func
         self.instances = []
         self.files = []        
 
@@ -45,7 +47,7 @@ class NeuroCAASJob(threading.Thread):
         self.fsize = 0
         if not self.uploadpath is None:
             if os.path.isfile(self.uploadpath):
-                statinfo = os.stat(filepath)
+                statinfo = os.stat(self.uploadpath)
                 self.fsize = statinfo.st_size
         self.submit = submit
         self.config = None
@@ -54,8 +56,9 @@ class NeuroCAASJob(threading.Thread):
         self.download_dir = localpath
         self.results = None        
         self.endlog = None
-        
+        self.resultspath = None
         self.start()
+        
     def run(self):
         if self.s3 is None: # this should be inside the thread.
             self.session,self.s3,self.client = s3_connect()
@@ -71,11 +74,12 @@ class NeuroCAASJob(threading.Thread):
                     def update(chunk):
                         self.count += chunk
                         self.isrunning = True
+                        self.update_func()
                     bucket.upload_file(self.uploadpath,
                                        self.submit['dataname'],
                                        Callback = update,
                                        Config = multipart_config)
-                self.state = 'uploaded'
+                self.set_state('uploaded')
             elif self.state == 'uploaded':
                 if self.submit['timestamp'] is None:
                     self.submit['timestamp'] = time.strftime("%Y%m%d_%H%M%S")
@@ -93,33 +97,38 @@ class NeuroCAASJob(threading.Thread):
                                        self.submitpath)
 
                 to_log('Submitted job {0}'.format(self.submit['timestamp']))
-                self.state = 'submitted'
+                self.set_state('submitted')
                 ## parse into the results folder name here:
+            elif self.state == 'submitted':
                 self.resultsprefix = "{g}/results/job__{b}_{ts}".format(
                     b = self.bucket, g = self.group, ts = self.submit["timestamp"])
                 self.resultspath = "s3://{b}/{g}/results/job__{b}_{ts}/".format(
                     b = self.bucket, g = self.group, ts = self.submit["timestamp"])
                 self.endpath = "s3://{b}/{g}/results/job__{b}_{ts}/".format(
                     b = self.bucket, g = self.group, ts = self.submit["timestamp"])
-            elif self.state == 'submitted':
                 self.check_results_path()
-                if len(list(filter(lambda x: 'certificate.txt' in x,jb.files))):
-                    self.state = 'started'
+                if len(list(filter(lambda x: 'certificate.txt' in x, self.files))):
+                    self.set_state('started')
             elif self.state == 'started':
                 self.check_results_path()
-                if len(list(filter(lambda x: 'end.txt' in x,jb.files))):
-                    self.state = 'finished'
+                if len(list(filter(lambda x: 'end.txt'in x, self.files))):
+                    self.set_state('finished')
                     # check for an 'end.txt' file
             elif self.state == 'finished':
                 # download the files and close
-                self.state = 'post'
+                self.set_state('post')
             elif self.state == 'post':
-                # download the files and close
-                self.post_func(self)
-                self.state = 'completed'
-            elif self.state == 'completed' and not self.post_func is None:
+                if not self.post_func is None:
+                    self.post_func(self)
+                self.set_state('completed')
                 self.isrunning = False
+            self._parse_cert()
+
         self.isrunning = False
+
+    def set_state(self,state):
+        self.state = state
+        self.update_func()
         
     def _parse_cert(self):
         """Parses the certificate file and assigns here along with a dictionary specifying instance info. This info is as follows: 
@@ -127,8 +136,12 @@ class NeuroCAASJob(threading.Thread):
 
         """
         if not self.resultspath is None:
-            self.cert = NeuroCAASCertificate(self.resultspath+"logs/certificate.txt")
-            self.instances = self.cert.get_instances()
+            try:
+                self.cert = NeuroCAASCertificate(self.resultspath+"logs/certificate.txt")
+                self.instances = self.cert.get_instances()
+            except:
+                # skip when the log is not complete
+                return
 
     def check_results_path(self):
         # populate the files

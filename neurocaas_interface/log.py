@@ -43,7 +43,6 @@ def load_file_s3(bucket_name, key, s3_resource = None):
     try:
         file_object = s3_resource.Object(bucket_name, key)
         raw_content = file_object.get()['Body'].read()
-        print(raw_content.decode("utf-8"))
     except ValueError as ve:
         print("Error loading config file. Error is: {}".format(ve))
         raise ValueError
@@ -217,7 +216,6 @@ class NeuroCAASCertificate(NeuroCAASLogObject):
         :return: tuple (certdict, writedict, writearea) of dictionaries and a range object. First entry has line numbers as keys and content of those lines as values.Second entry has line numbers as keys, and a dictionary of format {"dataname":dataname,"line":text} as value. Third entry indicates the range of lines where we can write. 
         """
         certlines = self.rawfile.split("\n")
-        print(self.rawfile)
         certdict = {ci:cl for ci,cl in enumerate(certlines)}
         linebreak_locs = dict(filter(find_linebreaks,certdict.items()))
         #print(certlines)
